@@ -63,11 +63,19 @@ class CPU:
         print()
 
     def ram_read(self, mar):
-        return self.ram
+        return self.ram[mar]
 
     def ram_write(self, mar, mdr):
         self.ram[mar] = mdr
 
     def run(self):
         """Run the CPU."""
-        pass
+        isRunning = True
+        ir = 0
+
+        while isRunning:
+            print("Running...")
+            self.trace()
+            isRunning = False
+
+        print("Shutting Down...")
