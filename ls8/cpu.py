@@ -83,24 +83,15 @@ class CPU:
 
     def load(self):
         """Load a program into memory."""
-
         address = 0
 
-        # For now, we've just hardcoded a program:
-
-        program = [
-            # From print8.ls8
-            0b10000010,  # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111,  # PRN R0
-            0b00000000,
-            0b00000001,  # HLT
-        ]
-
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+        with open("main-project/ls8/examples/print8.ls8") as program:
+            for line in program:
+                split_line = line.split("#")
+                instruction = split_line[0].strip()
+                if instruction != "":
+                    self.ram[address] = int(instruction, 2)
+                    address += 1
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
