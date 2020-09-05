@@ -63,11 +63,14 @@ class CPU:
         self.reg = [0] * 8
         self.reg[7] = 0xF4
         self.pc = 0
-        self.is_running = False
+
         self.perform_op = dict()
         self.perform_op[LDI] = self.ldi
         self.perform_op[PRN] = self.prn
         self.perform_op[HLT] = self.hlt
+        self.perform_op[MUL] = self.mul
+
+        self.is_running = False
 
     def ldi(self, *operands):
         self.reg[operands[0]] = operands[1]
@@ -81,11 +84,15 @@ class CPU:
         self.is_running = False
         self.pc += 1
 
+    def mul(self, *operands):
+        self.alu("MUL", *operands)
+        self.pc += 3
+
     def load(self):
         """Load a program into memory."""
         address = 0
 
-        with open("main-project/ls8/examples/print8.ls8") as program:
+        with open("main-project/ls8/examples/mult.ls8") as program:
             for line in program:
                 split_line = line.split("#")
                 instruction = split_line[0].strip()
@@ -99,6 +106,8 @@ class CPU:
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
         # elif op == "SUB": etc
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -138,7 +147,12 @@ class CPU:
             op_b = self.ram_read(self.pc + 2)
             # print("--- Before OP ---")
             # self.trace()
-            self.perform_op[instruction_reg](op_a, op_b)
+            if instruction_reg in self.perform_op:
+                self.perform_op[instruction_reg](op_a, op_b)
+            else:
+                print(f"Unknown Instruction {instruction_reg}")
+                print("Shutting Down...")
+                exit(1)
             # print("--- After OP ---")
             # self.trace()
 
