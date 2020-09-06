@@ -88,17 +88,25 @@ class CPU:
         self.alu("MUL", *operands)
         self.pc += 3
 
-    def load(self):
+    def load(self, program_path):
         """Load a program into memory."""
         address = 0
 
-        with open("main-project/ls8/examples/mult.ls8") as program:
-            for line in program:
-                split_line = line.split("#")
-                instruction = split_line[0].strip()
-                if instruction != "":
-                    self.ram[address] = int(instruction, 2)
-                    address += 1
+        try:
+            with open(program_path) as program:
+                for line in program:
+                    split_line = line.split("#")
+                    instruction = split_line[0].strip()
+                    if instruction != "":
+                        self.ram[address] = int(instruction, 2)
+                        address += 1
+        except:
+            print(f"Cannot open file at \"{program_path}\"")
+            self.shutdown(2)
+
+    def shutdown(self, exit_code=0):
+        print("Shutting Down...")
+        exit(exit_code)
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
@@ -151,9 +159,8 @@ class CPU:
                 self.perform_op[instruction_reg](op_a, op_b)
             else:
                 print(f"Unknown Instruction {instruction_reg}")
-                print("Shutting Down...")
-                exit(1)
+                self.shutdown(1)
             # print("--- After OP ---")
             # self.trace()
 
-        print("Shutting Down...")
+        self.shutdown()
