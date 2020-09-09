@@ -53,6 +53,11 @@ POP = 0b01000110
 PRN = 0b01000111
 PRA = 0b01001000
 
+### Bit Tools ###
+ONE_BIT = 1
+OP_SETS_INST = 4
+NUM_OPERANDS = 6
+
 
 class CPU:
     """Main CPU class."""
@@ -64,7 +69,7 @@ class CPU:
         self.reg[7] = 0xF4
         self.pc = 0
 
-        self.perform_op = dict()
+        self.perform_op = {}
         self.perform_op[LDI] = self.ldi
         self.perform_op[PRN] = self.prn
         self.perform_op[HLT] = self.hlt
@@ -74,19 +79,15 @@ class CPU:
 
     def ldi(self, *operands):
         self.reg[operands[0]] = operands[1]
-        self.pc += 3
 
     def prn(self, *operands):
         print(self.reg[operands[0]])
-        self.pc += 2
 
     def hlt(self, *operands):
         self.is_running = False
-        self.pc += 1
 
     def mul(self, *operands):
         self.alu("MUL", *operands)
-        self.pc += 3
 
     def load(self, program_path):
         """Load a program into memory."""
@@ -103,6 +104,17 @@ class CPU:
         except:
             print(f"Cannot open file at \"{program_path}\"")
             self.shutdown(2)
+
+    def to_next_instruction(self, ir):
+        # Meanings of the bits in the first byte of each instruction: AABCDDDD
+        #   AA Number of operands for this opcode, 0-2
+        #   B 1 if this is an ALU operation
+        #   C 1 if this instruction sets the PC
+        #   DDDD Instruction identifier
+        isPcAlreadySet = ir >> OP_SETS_INST
+        isPcAlreadySet = isPcAlreadySet & ONE_BIT
+        if not isPcAlreadySet:
+            self.pc += (ir >> NUM_OPERANDS) + 1
 
     def shutdown(self, exit_code=0):
         print("Shutting Down...")
@@ -157,6 +169,7 @@ class CPU:
             # self.trace()
             if instruction_reg in self.perform_op:
                 self.perform_op[instruction_reg](op_a, op_b)
+                self.to_next_instruction(instruction_reg)
             else:
                 print(f"Unknown Instruction {instruction_reg}")
                 self.shutdown(1)
