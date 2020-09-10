@@ -11,6 +11,8 @@ R4 = 0x04
 R5 = 0x05
 R6 = 0x06
 R7 = 0x07
+SP = 0x07
+
 
 ### OP-Codes ###
 # ALU
@@ -54,9 +56,18 @@ PRN = 0b01000111
 PRA = 0b01001000
 
 ### Bit Tools ###
-ONE_BIT = 1
-OP_SETS_INST = 4
-NUM_OPERANDS = 6
+ONE_BYTE = 0xff
+ONE_BIT = 0x01
+OP_SETS_INST = 0x04
+NUM_OPERANDS = 0x06
+
+### Stack ###
+STACK_HEAD = 0xf4
+
+### Exit Codes ###
+DONE = 0
+UNKNOWN_INSTRUCTION = 1
+IO_ERROR = 2
 
 
 class CPU:
@@ -66,7 +77,7 @@ class CPU:
         """Construct a new CPU."""
         self.ram = [0] * 256
         self.reg = [0] * 8
-        self.reg[7] = 0xF4
+        self.reg[SP] = STACK_HEAD
         self.pc = 0
 
         self.perform_op = {}
@@ -103,7 +114,7 @@ class CPU:
                         address += 1
         except:
             print(f"Cannot open file at \"{program_path}\"")
-            self.shutdown(2)
+            self.shutdown(IO_ERROR)
 
     def to_next_instruction(self, ir):
         # Meanings of the bits in the first byte of each instruction: AABCDDDD
@@ -116,7 +127,7 @@ class CPU:
         if not isPcAlreadySet:
             self.pc += (ir >> NUM_OPERANDS) + 1
 
-    def shutdown(self, exit_code=0):
+    def shutdown(self, exit_code=DONE):
         print("Shutting Down...")
         exit(exit_code)
 
@@ -124,10 +135,10 @@ class CPU:
         """ALU operations."""
 
         if op == "ADD":
-            self.reg[reg_a] += self.reg[reg_b]
+            self.reg[reg_a] += self.reg[reg_b] & ONE_BYTE
         # elif op == "SUB": etc
         elif op == "MUL":
-            self.reg[reg_a] *= self.reg[reg_b]
+            self.reg[reg_a] *= self.reg[reg_b] & ONE_BYTE
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -172,7 +183,7 @@ class CPU:
                 self.to_next_instruction(instruction_reg)
             else:
                 print(f"Unknown Instruction {instruction_reg}")
-                self.shutdown(1)
+                self.shutdown(UNKNOWN_INSTRUCTION)
             # print("--- After OP ---")
             # self.trace()
 
