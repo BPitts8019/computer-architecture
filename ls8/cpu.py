@@ -124,22 +124,18 @@ class CPU:
 
         Pop the value at the top of the stack into the given register."""
 
-        address = self.reg[SP]
-        self.reg[operands[0]] = self.ram_read(address)
-        if address < STACK_HEAD:
-            address += 1
-            self.reg[SP] = address
+        self.reg[operands[0]] = self.ram_read(self.reg[SP])
+        if self.reg[SP] < STACK_HEAD:
+            self.reg[SP] += 1
 
     def _push(self, *operands):
         """PUSH registerA
 
         Push the value in the given register on the stack."""
 
-        address = self.reg[SP]
-        address -= 1
-
-        if address > self.reg[PROGRAM_END]:
-            self.ram_write(address, self.reg[operands[0]])
+        if (self.reg[SP]-1) >= self.reg[PROGRAM_END]:
+            self.reg[SP] -= 1
+            self.ram_write(self.reg[SP], self.reg[operands[0]])
         else:
             print(f"Stack Overflow!!")
             self.trace()
