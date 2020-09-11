@@ -11,6 +11,7 @@ R4 = 0x04
 R5 = 0x05
 R6 = 0x06
 R7 = 0x07
+PROGRAM_END = 0x04
 SP = 0x07
 
 
@@ -68,6 +69,7 @@ STACK_HEAD = 0xf4
 DONE = 0
 UNKNOWN_INSTRUCTION = 1
 IO_ERROR = 2
+STACK_OVERFLOW = 3
 
 
 class CPU:
@@ -81,24 +83,67 @@ class CPU:
         self.pc = 0
 
         self.perform_op = {}
-        self.perform_op[LDI] = self.ldi
-        self.perform_op[PRN] = self.prn
-        self.perform_op[HLT] = self.hlt
-        self.perform_op[MUL] = self.mul
+        self.perform_op[LDI] = self._ldi
+        self.perform_op[PRN] = self._prn
+        self.perform_op[HLT] = self._hlt
+        self.perform_op[MUL] = self._mul
+        self.perform_op[PUSH] = self._push
+        self.perform_op[POP] = self._pop
 
         self.is_running = False
 
-    def ldi(self, *operands):
+    def _ldi(self, *operands):
+        """LDI registerA
+
+        Set the value of a register to an integer."""
+
         self.reg[operands[0]] = operands[1]
 
-    def prn(self, *operands):
+    def _prn(self, *operands):
+        """PRN registerA
+
+        Print numeric value stored in the given register."""
         print(self.reg[operands[0]])
 
-    def hlt(self, *operands):
+    def _hlt(self, *operands):
+        """HLT
+
+        Halt the CPU (and exit the emulator)."""
+
         self.is_running = False
 
-    def mul(self, *operands):
+    def _mul(self, *operands):
+        """MUL registerA registerB
+
+        Multiply the values in two registers together and store the result in registerA."""
+
         self.alu("MUL", *operands)
+
+    def _pop(self, *operands):
+        """POP registerA
+
+        Pop the value at the top of the stack into the given register."""
+
+        address = self.reg[SP]
+        self.reg[operands[0]] = self.ram_read(address)
+        if address < STACK_HEAD:
+            address += 1
+            self.reg[SP] = address
+
+    def _push(self, *operands):
+        """PUSH registerA
+
+        Push the value in the given register on the stack."""
+
+        address = self.reg[SP]
+        address -= 1
+
+        if address > self.reg[PROGRAM_END]:
+            self.ram_write(address, self.reg[operands[0]])
+        else:
+            print(f"Stack Overflow!!")
+            self.trace()
+            self._shutdown(STACK_OVERFLOW)
 
     def load(self, program_path):
         """Load a program into memory."""
@@ -114,9 +159,12 @@ class CPU:
                         address += 1
         except:
             print(f"Cannot open file at \"{program_path}\"")
-            self.shutdown(IO_ERROR)
+            self._shutdown(IO_ERROR)
 
-    def to_next_instruction(self, ir):
+        # store end of program into PROGRAM_END register
+        self.reg[PROGRAM_END] = address
+
+    def _to_next_instruction(self, ir):
         # Meanings of the bits in the first byte of each instruction: AABCDDDD
         #   AA Number of operands for this opcode, 0-2
         #   B 1 if this is an ALU operation
@@ -127,9 +175,9 @@ class CPU:
         if not isPcAlreadySet:
             self.pc += (ir >> NUM_OPERANDS) + 1
 
-    def shutdown(self, exit_code=DONE):
+    def _shutdown(self, exit_code=DONE):
         print("Shutting Down...")
-        exit(exit_code)
+        sys.exit(exit_code)
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
@@ -180,11 +228,11 @@ class CPU:
             # self.trace()
             if instruction_reg in self.perform_op:
                 self.perform_op[instruction_reg](op_a, op_b)
-                self.to_next_instruction(instruction_reg)
+                self._to_next_instruction(instruction_reg)
             else:
                 print(f"Unknown Instruction {instruction_reg}")
-                self.shutdown(UNKNOWN_INSTRUCTION)
+                self._shutdown(UNKNOWN_INSTRUCTION)
             # print("--- After OP ---")
             # self.trace()
 
-        self.shutdown()
+        self._shutdown()
