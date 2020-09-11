@@ -63,11 +63,14 @@ class CPU:
         self.reg = [0] * 8
         self.reg[7] = 0xF4
         self.pc = 0
-        self.is_running = False
+
         self.perform_op = dict()
         self.perform_op[LDI] = self.ldi
         self.perform_op[PRN] = self.prn
         self.perform_op[HLT] = self.hlt
+        self.perform_op[MUL] = self.mul
+
+        self.is_running = False
 
     def ldi(self, *operands):
         self.reg[operands[0]] = operands[1]
@@ -81,26 +84,29 @@ class CPU:
         self.is_running = False
         self.pc += 1
 
-    def load(self):
-        """Load a program into memory."""
+    def mul(self, *operands):
+        self.alu("MUL", *operands)
+        self.pc += 3
 
+    def load(self, program_path):
+        """Load a program into memory."""
         address = 0
 
-        # For now, we've just hardcoded a program:
+        try:
+            with open(program_path) as program:
+                for line in program:
+                    split_line = line.split("#")
+                    instruction = split_line[0].strip()
+                    if instruction != "":
+                        self.ram[address] = int(instruction, 2)
+                        address += 1
+        except:
+            print(f"Cannot open file at \"{program_path}\"")
+            self.shutdown(2)
 
-        program = [
-            # From print8.ls8
-            0b10000010,  # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111,  # PRN R0
-            0b00000000,
-            0b00000001,  # HLT
-        ]
-
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+    def shutdown(self, exit_code=0):
+        print("Shutting Down...")
+        exit(exit_code)
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
@@ -108,6 +114,8 @@ class CPU:
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
         # elif op == "SUB": etc
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -147,8 +155,12 @@ class CPU:
             op_b = self.ram_read(self.pc + 2)
             # print("--- Before OP ---")
             # self.trace()
-            self.perform_op[instruction_reg](op_a, op_b)
+            if instruction_reg in self.perform_op:
+                self.perform_op[instruction_reg](op_a, op_b)
+            else:
+                print(f"Unknown Instruction {instruction_reg}")
+                self.shutdown(1)
             # print("--- After OP ---")
             # self.trace()
 
-        print("Shutting Down...")
+        self.shutdown()
